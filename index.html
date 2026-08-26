@@ -4,103 +4,27 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Island Online</title>
-
 <style>
-*{box-sizing:border-box}
-body{
-    margin:0;
-    background:#111827;
-    color:white;
-    font-family:Arial,sans-serif;
-    overflow:hidden;
+html,body{
+  margin:0;
+  padding:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:#62c5ef;
 }
-#game{
-    width:100vw;
-    height:100vh;
-    position:relative;
-    background:#2196d2;
+canvas{
+  display:block;
+  width:100%;
+  height:100%;
 }
-#island{
-    position:absolute;
-    width:700px;
-    height:500px;
-    max-width:90vw;
-    max-height:70vh;
-    left:50%;
-    top:48%;
-    transform:translate(-50%,-50%);
-    background:#55b94a;
-    border:18px solid #e6c16a;
-    border-radius:48% 52% 45% 55%;
-    box-shadow:0 0 0 18px #168ac0;
-}
-.tree{
-    position:absolute;
-    font-size:45px;
-}
-#player{
-    position:absolute;
-    font-size:38px;
-    left:50%;
-    top:50%;
-    transform:translate(-50%,-50%);
-    transition:.1s;
-}
-#top{
-    position:absolute;
-    top:10px;
-    left:10px;
-    right:10px;
-    display:flex;
-    justify-content:space-between;
-    gap:10px;
-    z-index:5;
-}
-.panel{
-    background:rgba(0,0,0,.65);
-    padding:10px 14px;
-    border-radius:12px;
-}
-#chat{
-    position:absolute;
-    bottom:10px;
-    left:10px;
-    width:300px;
-    max-width:calc(100vw - 20px);
-    background:rgba(0,0,0,.7);
-    border-radius:12px;
-    padding:10px;
-    z-index:5;
-}
-#messages{
-    height:120px;
-    overflow:auto;
-    margin-bottom:8px;
-    font-size:14px;
-}
-#msg{
-    width:70%;
-    padding:9px;
-    border:0;
-    border-radius:8px;
-}
-button{
-    padding:9px 12px;
-    border:0;
-    border-radius:8px;
-    background:#22c55e;
-    color:white;
-    font-weight:bold;
-}
-#voice{
-    background:#7c3aed;
-}
-#hint{
-    position:absolute;
-    bottom:10px;
-    right:10px;
-    background:rgba(0,0,0,.65);
-    padding:10px;
-    border-radius:10px;
-}
-    
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<script src="./game.js"></script>
+
+</body>
+</html>
