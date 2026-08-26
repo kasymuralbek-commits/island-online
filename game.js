@@ -1,63 +1,67 @@
-const c = document.getElementById("game");
-const x = c.getContext("2d");
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-let W, H;
+let W = 0;
+let H = 0;
 
 function resize() {
-  W = innerWidth;
-  H = innerHeight;
-  c.width = W;
-  c.height = H;
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
 }
+
 resize();
-addEventListener("resize", resize);
+window.addEventListener("resize", resize);
 
 const TILE = 32;
-const COLS = 180;
-const ROWS = 80;
+const WORLD_W = 180;
+const WORLD_H = 70;
 
 const world = Array.from(
-  { length: ROWS },
-  () => Array(COLS).fill(0)
+  { length: WORLD_H },
+  () => Array(WORLD_W).fill(0)
 );
 
-/* ОСТРОВ */
-for (let i = 0; i < COLS; i++) {
-  const surface =
+// 1 — трава, 2 — земля, 3 — камень, 4 — дерево, 5 — листья
+for (let x = 0; x < WORLD_W; x++) {
+  const ground =
     38 +
-    Math.floor(Math.sin(i * 0.12) * 3) +
-    Math.floor(Math.sin(i * 0.035) * 5);
+    Math.floor(Math.sin(x * 0.12) * 3) +
+    Math.floor(Math.sin(x * 0.04) * 4);
 
-  for (let j = surface; j < ROWS; j++) {
-    if (j === surface) world[j][i] = 1;
-    else if (j < surface + 5) world[j][i] = 2;
-    else world[j][i] = 3;
+  for (let y = ground; y < WORLD_H; y++) {
+    world[y][x] = y === ground ? 1 : y < ground + 5 ? 2 : 3;
   }
 }
 
-/* ДЕРЕВЬЯ */
-for (let i = 8; i < COLS - 5; i += 14) {
-  const s = world.findIndex(row => row[i] === 1);
+// Деревья
+for (let x = 8; x < WORLD_W - 5; x += 15) {
+  const ground = world.findIndex(row => row[x] !== 0);
 
-  for (let j = s - 1; j >= s - 5; j--) {
-    world[j][i] = 4;
-  }
+  if (ground > 7) {
+    for (let y = ground - 1; y >= ground - 6; y--) {
+      world[y][x] = 4;
+    }
 
-  for (let yy = s - 7; yy <= s - 4; yy++) {
-    for (let xx = i - 2; xx <= i + 2; xx++) {
-      if (xx >= 0 && xx < COLS && yy >= 0) {
-        world[yy][xx] = 5;
+    for (let y = ground - 8; y <= ground - 5; y++) {
+      for (let xx = x - 3; xx <= x + 3; xx++) {
+        if (
+          xx >= 0 &&
+          xx < WORLD_W &&
+          Math.abs(xx - x) +
+            Math.abs(y - (ground - 6)) < 5
+        ) {
+          world[y][xx] = 5;
+        }
       }
     }
   }
 }
 
-/* ПЕРСОНАЖ */
 const player = {
-  x: 12 * TILE,
+  x: 14 * TILE,
   y: 30 * TILE,
-  w: 22,
-  h: 28,
+  width: 22,
+  height: 28,
   vx: 0,
   vy: 0,
   onGround: false
@@ -65,21 +69,25 @@ const player = {
 
 const keys = {};
 
-addEventListener("keydown", e => {
+window.addEventListener("keydown", e => {
   keys[e.key.toLowerCase()] = true;
 });
 
-addEventListener("keyup", e => {
+window.addEventListener("keyup", e => {
   keys[e.key.toLowerCase()] = false;
 });
 
-/* ПРОВЕРКА БЛОКОВ */
 function solid(px, py) {
   const tx = Math.floor(px / TILE);
   const ty = Math.floor(py / TILE);
 
-  if (tx < 0 || tx >= COLS || ty >= ROWS) return true;
-  if (ty < 0) return false;
+  if (tx < 0 || tx >= WORLD_W || ty >= WORLD_H) {
+    return true;
+  }
+
+  if (ty < 0) {
+    return false;
+  }
 
   return world[ty][tx] !== 0;
 }
@@ -87,38 +95,44 @@ function solid(px, py) {
 function collision(px, py) {
   return (
     solid(px, py) ||
-    solid(px + player.w, py) ||
-    solid(px, py + player.h) ||
-    solid(px + player.w, py + player.h)
+    solid(px + player.width, py) ||
+    solid(px, py + player.height) ||
+    solid(
+      px + player.width,
+      py + player.height
+    )
   );
 }
 
-/* КАМЕРА */
-let camX = 0;
-let camY = 0;
+let cameraX = 0;
+let cameraY = 0;
 
-/* ИГРОВОЕ ОБНОВЛЕНИЕ */
 function update() {
   const left =
-    keys["a"] ||
-    keys["arrowleft"];
+    keys["a"] || keys["arrowleft"];
 
   const right =
-    keys["d"] ||
-    keys["arrowright"];
+    keys["d"] || keys["arrowright"];
 
   const jump =
     keys["w"] ||
     keys["arrowup"] ||
     keys[" "];
 
-  if (left) player.vx -= 0.45;
-  if (right) player.vx += 0.45;
+  if (left) {
+    player.vx -= 0.45;
+  }
+
+  if (right) {
+    player.vx += 0.45;
+  }
 
   player.vx *= 0.82;
 
-  if (player.vx > 4) player.vx = 4;
-  if (player.vx < -4) player.vx = -4;
+  player.vx = Math.max(
+    -4,
+    Math.min(4, player.vx)
+  );
 
   if (jump && player.onGround) {
     player.vy = -10;
@@ -131,18 +145,18 @@ function update() {
     player.vy = 12;
   }
 
-  let nx = player.x + player.vx;
+  let nextX = player.x + player.vx;
 
-  if (!collision(nx, player.y)) {
-    player.x = nx;
+  if (!collision(nextX, player.y)) {
+    player.x = nextX;
   } else {
     player.vx = 0;
   }
 
-  let ny = player.y + player.vy;
+  let nextY = player.y + player.vy;
 
-  if (!collision(player.x, ny)) {
-    player.y = ny;
+  if (!collision(player.x, nextY)) {
+    player.y = nextY;
     player.onGround = false;
   } else {
     if (player.vy > 0) {
@@ -152,13 +166,71 @@ function update() {
     player.vy = 0;
   }
 
-  camX +=
-    (player.x - W / 2 - camX) * 0.12;
+  cameraX +=
+    (player.x - W / 2 - cameraX) * 0.12;
 
-  camY +=
-    (player.y - H / 2 - camY) * 0.12;
+  cameraY +=
+    (player.y - H / 2 - cameraY) * 0.12;
 
-  camX = Math.max(
+  cameraX = Math.max(
     0,
-    Math.min(COLS * TILE -
-  
+    Math.min(WORLD_W * TILE - W, cameraX)
+  );
+
+  cameraY = Math.max(
+    0,
+    Math.min(WORLD_H * TILE - H, cameraY)
+  );
+}
+
+function drawBlock(type, sx, sy) {
+  if (type === 1) {
+    ctx.fillStyle = "#55b947";
+    ctx.fillRect(sx, sy, TILE, TILE);
+
+    ctx.fillStyle = "#398f35";
+    ctx.fillRect(
+      sx,
+      sy + 7,
+      TILE,
+      TILE - 7
+    );
+  }
+
+  if (type === 2) {
+    ctx.fillStyle = "#99613b";
+    ctx.fillRect(sx, sy, TILE, TILE);
+  }
+
+  if (type === 3) {
+    ctx.fillStyle = "#69727b";
+    ctx.fillRect(sx, sy, TILE, TILE);
+
+    ctx.fillStyle = "#555d66";
+    ctx.fillRect(sx + 6, sy + 7, 5, 5);
+    ctx.fillRect(sx + 21, sy + 18, 5, 5);
+  }
+
+  if (type === 4) {
+    ctx.fillStyle = "#76502e";
+    ctx.fillRect(
+      sx + 9,
+      sy,
+      14,
+      TILE
+    );
+  }
+
+  if (type === 5) {
+    ctx.fillStyle = "#2f9144";
+    ctx.fillRect(
+      sx + 2,
+      sy + 3,
+      TILE - 4,
+      TILE - 6
+    );
+
+    ctx.fillStyle = "#45aa51";
+    ctx.fillRect(
+      sx + 7,
+      sy
