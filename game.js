@@ -4,12 +4,64 @@ const x = c.getContext("2d");
 let W, H;
 
 function resize() {
-  W = c.width = innerWidth;
-  H = c.height = innerHeight;
+  W = innerWidth;
+  H = innerHeight;
+  c.width = W;
+  c.height = H;
 }
-
 resize();
 addEventListener("resize", resize);
+
+const TILE = 32;
+const COLS = 180;
+const ROWS = 80;
+
+const world = Array.from(
+  { length: ROWS },
+  () => Array(COLS).fill(0)
+);
+
+/* ОСТРОВ */
+for (let i = 0; i < COLS; i++) {
+  const surface =
+    38 +
+    Math.floor(Math.sin(i * 0.12) * 3) +
+    Math.floor(Math.sin(i * 0.035) * 5);
+
+  for (let j = surface; j < ROWS; j++) {
+    if (j === surface) world[j][i] = 1;
+    else if (j < surface + 5) world[j][i] = 2;
+    else world[j][i] = 3;
+  }
+}
+
+/* ДЕРЕВЬЯ */
+for (let i = 8; i < COLS - 5; i += 14) {
+  const s = world.findIndex(row => row[i] === 1);
+
+  for (let j = s - 1; j >= s - 5; j--) {
+    world[j][i] = 4;
+  }
+
+  for (let yy = s - 7; yy <= s - 4; yy++) {
+    for (let xx = i - 2; xx <= i + 2; xx++) {
+      if (xx >= 0 && xx < COLS && yy >= 0) {
+        world[yy][xx] = 5;
+      }
+    }
+  }
+}
+
+/* ПЕРСОНАЖ */
+const player = {
+  x: 12 * TILE,
+  y: 30 * TILE,
+  w: 22,
+  h: 28,
+  vx: 0,
+  vy: 0,
+  onGround: false
+};
 
 const keys = {};
 
@@ -21,184 +73,92 @@ addEventListener("keyup", e => {
   keys[e.key.toLowerCase()] = false;
 });
 
-const player = {
-  x: 200,
-  y: 100,
-  vx: 0,
-  vy: 0,
-  w: 28,
-  h: 48,
-  ground: false
-};
+/* ПРОВЕРКА БЛОКОВ */
+function solid(px, py) {
+  const tx = Math.floor(px / TILE);
+  const ty = Math.floor(py / TILE);
 
+  if (tx < 0 || tx >= COLS || ty >= ROWS) return true;
+  if (ty < 0) return false;
+
+  return world[ty][tx] !== 0;
+}
+
+function collision(px, py) {
+  return (
+    solid(px, py) ||
+    solid(px + player.w, py) ||
+    solid(px, py + player.h) ||
+    solid(px + player.w, py + player.h)
+  );
+}
+
+/* КАМЕРА */
+let camX = 0;
+let camY = 0;
+
+/* ИГРОВОЕ ОБНОВЛЕНИЕ */
 function update() {
-  player.vx = 0;
+  const left =
+    keys["a"] ||
+    keys["arrowleft"];
 
-  if (keys["a"] || keys["arrowleft"]) {
-    player.vx = -4;
+  const right =
+    keys["d"] ||
+    keys["arrowright"];
+
+  const jump =
+    keys["w"] ||
+    keys["arrowup"] ||
+    keys[" "];
+
+  if (left) player.vx -= 0.45;
+  if (right) player.vx += 0.45;
+
+  player.vx *= 0.82;
+
+  if (player.vx > 4) player.vx = 4;
+  if (player.vx < -4) player.vx = -4;
+
+  if (jump && player.onGround) {
+    player.vy = -10;
+    player.onGround = false;
   }
 
-  if (keys["d"] || keys["arrowright"]) {
-    player.vx = 4;
+  player.vy += 0.45;
+
+  if (player.vy > 12) {
+    player.vy = 12;
   }
 
-  if (
-    (keys["w"] ||
-     keys["arrowup"] ||
-     keys[" "]) &&
-    player.ground
-  ) {
-    player.vy = -11;
-    player.ground = false;
+  let nx = player.x + player.vx;
+
+  if (!collision(nx, player.y)) {
+    player.x = nx;
+  } else {
+    player.vx = 0;
   }
 
-  player.vy += 0.5;
+  let ny = player.y + player.vy;
 
-  player.x += player.vx;
-  player.y += player.vy;
+  if (!collision(player.x, ny)) {
+    player.y = ny;
+    player.onGround = false;
+  } else {
+    if (player.vy > 0) {
+      player.onGround = true;
+    }
 
-  const ground = H - 190;
-
-  if (player.y + player.h >= ground) {
-    player.y = ground - player.h;
     player.vy = 0;
-    player.ground = true;
   }
 
-  if (player.x < 0) player.x = 0;
-  if (player.x > W - player.w) {
-    player.x = W - player.w;
-  }
-}
+  camX +=
+    (player.x - W / 2 - camX) * 0.12;
 
-function drawTree(px, py) {
-  x.fillStyle = "#70401f";
-  x.fillRect(px - 12, py, 24, 100);
+  camY +=
+    (player.y - H / 2 - camY) * 0.12;
 
-  x.fillStyle = "#258a38";
-
-  x.beginPath();
-  x.arc(px, py, 55, 0, Math.PI * 2);
-  x.fill();
-
-  x.beginPath();
-  x.arc(px - 35, py + 25, 40, 0, Math.PI * 2);
-  x.fill();
-
-  x.beginPath();
-  x.arc(px + 35, py + 25, 40, 0, Math.PI * 2);
-  x.fill();
-}
-  x.fillStyle = "#70401f";
-  x.fillRect(x - 12, y, 24, 100);
-
-  x.fillStyle = "#258a38";
-
-  x.beginPath();
-  x.arc(x, y, 55, 0, Math.PI * 2);
-  x.fill();
-
-  x.beginPath();
-  x.arc(x - 35, y + 25, 40, 0, Math.PI * 2);
-  x.fill();
-
-  x.beginPath();
-  x.arc(x + 35, y + 25, 40, 0, Math.PI * 2);
-  x.fill();
-}
-
-function draw() {
-  // Небо
-  x.fillStyle = "#62c5ef";
-  x.fillRect(0, 0, W, H);
-
-  // Солнце
-  x.fillStyle = "#ffe06b";
-  x.beginPath();
-  x.arc(W - 90, 90, 40, 0, Math.PI * 2);
-  x.fill();
-
-  // Земля
-  x.fillStyle = "#55a83f";
-  x.fillRect(0, H - 190, W, 30);
-
-  // Грязь
-  x.fillStyle = "#8b5a2b";
-  x.fillRect(0, H - 160, W, 160);
-
-  // Камни
-  x.fillStyle = "#777";
-  for (let i = 0; i < W; i += 70) {
-    x.fillRect(i, H - 110, 30, 30);
-  }
-
-  // Деревья
-  for (let i = 80; i < W; i += 220) {
-    drawTree(i, H - 270);
-  }
-
-  // Игрок
-  x.fillStyle = "#f2c28b";
-  x.fillRect(
-    player.x + 4,
-    player.y,
-    20,
-    20
-  );
-
-  x.fillStyle = "#57351f";
-  x.fillRect(
-    player.x + 3,
-    player.y,
-    22,
-    7
-  );
-
-  x.fillStyle = "#2875c7";
-  x.fillRect(
-    player.x,
-    player.y + 20,
-    28,
-    20
-  );
-
-  x.fillStyle = "#333";
-  x.fillRect(
-    player.x + 3,
-    player.y + 40,
-    9,
-    8
-  );
-
-  x.fillRect(
-    player.x + 17,
-    player.y + 40,
-    9,
-    8
-  );
-
-  // Интерфейс
-  x.fillStyle = "rgba(0,0,0,0.65)";
-  x.fillRect(15, 15, 230, 65);
-
-  x.fillStyle = "#fff";
-  x.font = "bold 22px Arial";
-  x.fillText("ISLAND ONLINE", 28, 43);
-
-  x.font = "15px Arial";
-  x.fillText("A/D — движение", 28, 65);
-
-  x.fillText(
-    "W / ↑ / Space — прыжок",
-    28,
-    100
-  );
-}
-
-function gameLoop() {
-  update();
-  draw();
-  requestAnimationFrame(gameLoop);
-}
-
-gameLoop();
+  camX = Math.max(
+    0,
+    Math.min(COLS * TILE -
+  
