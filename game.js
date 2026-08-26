@@ -71,7 +71,24 @@ function update() {
   }
 }
 
-function drawTree(x, y) {
+function drawTree(px, py) {
+  x.fillStyle = "#70401f";
+  x.fillRect(px - 12, py, 24, 100);
+
+  x.fillStyle = "#258a38";
+
+  x.beginPath();
+  x.arc(px, py, 55, 0, Math.PI * 2);
+  x.fill();
+
+  x.beginPath();
+  x.arc(px - 35, py + 25, 40, 0, Math.PI * 2);
+  x.fill();
+
+  x.beginPath();
+  x.arc(px + 35, py + 25, 40, 0, Math.PI * 2);
+  x.fill();
+}
   x.fillStyle = "#70401f";
   x.fillRect(x - 12, y, 24, 100);
 
